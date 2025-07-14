@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MyworkOne Admin Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f2f2f2;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    form {
+      background: white;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .file-list {
+      margin-top: 40px;
+    }
+    .file-item {
+      background: #fff;
+      margin: 10px auto;
+      padding: 10px;
+      max-width: 600px;
+      border-radius: 5px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>MyworkOne Admin Panel</h1>
+  <form id="uploadForm">
+    <input type="text" id="clientName" placeholder="Client Name" required />
+    <input type="text" id="projectName" placeholder="Project Name" required />
+    <input type="text" id="orderQuantity" placeholder="Order Quantity" required />
+    <input type="text" id="stationName" placeholder="Station Name" required />
+    <select id="documentType" required>
+      <option value="">Select Document Type</option>
+      <option value="DPR">DPR</option>
+      <option value="MTC">MTC</option>
+      <option value="Annexure">Annexure</option>
+      <option value="IR">IR</option>
+      <option value="IRN">IRN</option>
+      <option value="QAP">QAP</option>
+      <option value="MPS">MPS</option>
+    </select>
+    <input type="file" id="fileInput" required />
+    <button type="submit">Upload</button>
+  </form>
+
+  <div class="file-list" id="fileList"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAp2xSGk24zXwKqMe-1-nFwZp36H-ZQkCM",
+      authDomain: "myworkone-ab7ac.firebaseapp.com",
+      projectId: "myworkone-ab7ac",
+      storageBucket: "myworkone-ab7ac.appspot.com",
+      messagingSenderId: "1095496996027",
+      appId: "1:1095496996027:web:8f3a41aad492854f84059e"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    const auth = getAuth(app);
+
+    // Only allow Vivek to upload
+    signInWithEmailAndPassword(auth, "vivekshroffjil@gmail.com", "123456")
+      .then(() => console.log("Admin signed in"))
+      .catch(error => alert("Login failed: " + error.message));
+
+    const form = document.getElementById("uploadForm");
+    const fileList = document.getElementById("fileList");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const clientName = document.getElementById("clientName").value;
+      const projectName = document.getElementById("projectName").value;
+      const orderQuantity = document.getElementById("orderQuantity").value;
+      const stationName = document.getElementById("stationName").value;
+      const documentType = document.getElementById("documentType").value;
+      const file = document.getElementById("fileInput").files[0];
+
+      const storageRef = ref(storage, file.name);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      await addDoc(collection(db, "documents"), {
+        clientName,
+        projectName,
+        orderQuantity,
+        stationName,
+        documentType,
+        fileURL: downloadURL
+      });
+
+      alert("File uploaded successfully!");
+      form.reset();
+      loadFiles();
+    });
+
+    async function loadFiles() {
+      fileList.innerHTML = "";
+      const querySnapshot = await getDocs(collection(db, "documents"));
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const div = document.createElement("div");
+        div.className = "file-item";
+        div.innerHTML = `
+          <strong>${data.documentType}</strong><br>
+          <b>Client:</b> ${data.clientName} |
+          <b>Project:</b> ${data.projectName} |
+          <b>Order:</b> ${data.orderQuantity} |
+          <b>Station:</b> ${data.stationName}<br>
+          <a href="${data.fileURL}" target="_blank">Download File</a>
+        `;
+        fileList.appendChild(div);
+      });
+    }
+
+    loadFiles();
+  </script>
+</body>
+</html>
